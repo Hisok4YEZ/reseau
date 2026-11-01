@@ -1,9 +1,9 @@
 /* Service worker : permet d'utiliser le site hors-ligne une fois visité.
    - pages, JS, CSS, données : réseau d'abord (toujours la dernière version), cache si pas de réseau
    - images des diapos et PDF : cache d'abord (rapide), mis à jour en arrière-plan */
-var CACHE = "mif05-v1";
+var CACHE = "mif05-v2";
 var CORE = ["./", "index.html", "assets/style.css", "assets/app.js", "data/cms.js",
-  "data/ch1-introduction.js", "data/ch2-application.js", "data/ch3-transport.js", "data/ch4-reseau.js",
+  "data/ch1-introduction.js", "data/ch2-application.js", "data/ch3-transport.js", "data/ch4-reseau.js", "data/annales.js", "annales/liens1.webp",
   "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", function (e) {

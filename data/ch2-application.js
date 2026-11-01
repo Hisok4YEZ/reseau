@@ -10,7 +10,7 @@ COURS.chapitres.push({
   court: "Application",
   couleur: "#8b5cf6",
   source: "CM1 · diapos 32–41",
-  resume: "Client-serveur, processus, sockets, numéros de port, et les applications « réseau » comme DHCP et DNS.",
+  resume: "Client-serveur, processus, sockets, numéros de port, DHCP et DNS — plus HTTP et les cookies, tombés aux annales.",
 
   sections: [
     {
@@ -116,6 +116,53 @@ COURS.chapitres.push({
   <li>Alice envoie une <b>requête HTTP</b>, le serveur web renvoie une <b>réponse HTTP</b>.</li>
 </ol>
 <div class="retenir">Ordre logique quand on arrive sur un réseau : <b>DHCP</b> (avoir une adresse) → <b>DNS</b> (trouver l'IP du site) → <b>HTTP</b> (demander la page).</div>`
+    },
+    {
+      id: "http",
+      titre: "HTTP, cookies et DNS (tombés aux annales)",
+      diapos: [40, 41, 53, 91],
+      recherche: "HTTP cookies DNS serveur local explication",
+      videos: [
+        { t: "Comprendre le DNS en 5 minutes", u: "https://www.youtube.com/watch?v=qzWdzAvfBoo", l: "FR" },
+        { t: "Learn in 5 Minutes: HTTP Cookies", u: "https://www.youtube.com/watch?v=EqvUF_tVry0", l: "EN" },
+        { t: "Understanding Recursive DNS Name Resolution", u: "https://www.youtube.com/watch?v=lyX9K5a52rI", l: "EN" }
+      ],
+      html: `
+<div class="attention"><b>⚠️ Pas dans les diapos de cette année</b> : HTTP, les cookies et le DNS local ne sont pas détaillés dans tes CM1–CM2, mais ils sont tombés aux QCM de 2022–23 et 2023–24. Voici le minimum à savoir.</div>
+
+<h4>HTTP</h4>
+<ul>
+  <li>HTTP (<i>HyperText Transfer Protocol</i>) = le protocole du <b>Web</b>, couche <b>Application</b> (donc de bout-en-bout).</li>
+  <li>Mode <b>client-serveur</b> : le navigateur (client) envoie une <b>requête</b>, le serveur web renvoie une <b>réponse</b> [d41].</li>
+  <li>Il repose sur <b>TCP</b> (port 80, ou 443 pour HTTPS) : la requête et la réponse voyagent dans des segments TCP [d91].</li>
+  <li>Pourquoi « <b>principalement</b> » TCP dans l'annale 2023–24 ? La version récente <b>HTTP/3</b> utilise QUIC, qui tourne sur UDP.</li>
+</ul>
+
+<h4>Les cookies</h4>
+<p>HTTP est <b>sans état</b> : le serveur ne se souvient pas de tes requêtes précédentes. Le cookie règle ça :</p>
+<ol>
+  <li>À ta première visite, le <b>serveur choisit une valeur</b> (ex. <code>id=1678</code>) et te l'envoie dans sa réponse (en-tête <code>Set-Cookie</code>).</li>
+  <li>Ton navigateur la <b>stocke</b>.</li>
+  <li>À chaque requête suivante vers ce site, le navigateur la <b>renvoie</b> (en-tête <code>Cookie</code>) → le serveur te reconnaît : panier, connexion, préférences…</li>
+</ol>
+<div class="retenir">Un cookie = une valeur <b>choisie par le serveur</b> pour un client, <b>renvoyée par le client</b> à chaque requête, qui permet au serveur de <b>maintenir un état pour chaque visiteur</b>.</div>
+<div class="piege">Les cookies ne <u>sécurisent</u> rien et n'<u>accélèrent</u> rien. Télécharger plusieurs objets d'une page sur une seule connexion TCP, c'est la <b>connexion persistante</b>, pas les cookies.</div>
+
+<h4>DNS</h4>
+<ul>
+  <li>Application « réseau » [d40], en mode <b>client-serveur</b>, qui traduit un nom en adresse IP.</li>
+  <li>Port <b>53</b>, en <b>UDP ou TCP</b> [d53] : UDP la plupart du temps (rapide), TCP possible (grosses réponses). Donc « repose <u>toujours</u> sur UDP » est faux.</li>
+  <li>Il peut tomber en panne comme tout serveur (c'est pour ça qu'il y en a plusieurs).</li>
+</ul>
+
+<h4>Le serveur DNS local</h4>
+<p>C'est le serveur DNS de ton réseau — à l'UCBL, son adresse t'est donnée par DHCP [d41].</p>
+<ol>
+  <li>Ton PC lui demande l'IP de www.youtube.com → il est <b>serveur</b> pour toi.</li>
+  <li>S'il ne connaît pas la réponse, il interroge à son tour la hiérarchie DNS : serveur <b>racine</b>, puis serveur <b>.com</b>, puis le serveur <b>de youtube.com</b> → il est <b>client</b> de ces serveurs.</li>
+  <li>Il garde la réponse en <b>cache</b> : la fois suivante, il répond tout de suite.</li>
+</ol>
+<div class="retenir">DNS local = <b>à la fois serveur et client</b>. Il ne connaît pas tout Internet, et grâce à son cache il <b>accélère</b> souvent les réponses (il ne les ralentit pas « toujours »).</div>`
     }
   ],
 
@@ -178,6 +225,34 @@ COURS.chapitres.push({
       e: "Diapo 41 : adresse IP ; adresse IP passerelle ; adresse IP serveur DNS local." },
     { s: "protocoles-app", d: 41, q: "Dans quel ordre se déroulent les échanges quand Alice arrive sur eduroam puis ouvre une page web ?",
       r: ["DHCP, puis DNS, puis HTTP", "DNS, puis DHCP, puis HTTP", "HTTP, puis DNS, puis DHCP", "DHCP, puis HTTP, puis DNS"],
-      e: "Il faut d'abord une adresse (DHCP), puis l'IP du site (DNS), puis la page (HTTP)." }
+      e: "Il faut d'abord une adresse (DHCP), puis l'IP du site (DNS), puis la page (HTTP)." },
+    /* =====================================================================
+       ANNALES — questions des vrais QCM (corrigés officiels)
+       ===================================================================== */
+    { s: "apps", d: 35, annale: "ClientServeur", q: "Au sein d'une application de type client-serveur",
+      r: ["le serveur a une adresse IP permanente tandis que les clients peuvent avoir des adresses IP dynamiques", "les clients peuvent échanger directement les données entre eux", "les clients ont forcément des adresses IP permanentes", "les clients envoient en permanence des requêtes au serveur"],
+      e: "Diapo 35 : serveur toujours actif avec une IP permanente ; clients à activité intermittente (pas « en permanence »), IP éventuellement dynamique, et ils ne se parlent pas directement." },
+    { s: "processus", d: 37, annale: "Processus", q: "Les processus",
+      r: ["communiquent avec la couche Transport via une socket", "sont définis au niveau de la couche Transport", "sur deux machines différentes communiquent directement entre eux par passage de messages sans passer par la pile TCP/IP", "sont identifiables grâce aux adresses IP des machines seulement"],
+      e: "Le processus (couche Application) dépose et reçoit ses messages dans sa socket, l'interface avec la couche Transport. Les messages traversent forcément toute la pile, et il faut IP + port pour identifier un processus." },
+    { s: "processus", d: 38, annale: "Socket2", q: "De quel type d'information un processus exécuté sur un nœud A a-t-il besoin pour identifier un processus exécuté sur un nœud B ?",
+      r: ["l'adresse IP et le numéro de port du nœud B", "seulement l'adresse IP si le protocole de transport utilisé est UDP", "seulement l'adresse IP et le numéro de port du nœud B si le protocole de transport utilisé est TCP", "seulement l'adresse MAC du nœud B si le protocole de transport utilisé est UDP"],
+      e: "Toujours IP + port, que ce soit en TCP ou en UDP (diapo 38). L'IP désigne la machine, le port désigne le processus sur cette machine." },
+    { s: "http", d: 91, annale: "HTTP2", q: "HTTP est",
+      r: ["un protocole applicatif, qui fonctionne en mode client-serveur et qui repose principalement sur TCP", "un protocole de transport", "un protocole applicatif, qui fonctionne en mode client-serveur et qui repose toujours sur UDP", "un protocole applicatif, qui fonctionne en mode pair-à-pair et qui repose toujours sur TCP"],
+      e: "HTTP = couche Application, navigateur (client) / serveur web. Il repose sur TCP (diapo 91 : requête HTTP dans un segment TCP). « Principalement » car HTTP/3 passe par QUIC, qui tourne sur UDP. (En 2022–23 la bonne réponse disait simplement « repose sur TCP ».)" },
+    { s: "http", d: null, annale: "Cookies2", q: "À quoi servent les cookies utilisés par HTTP ?",
+      r: ["À permettre aux serveurs Web de maintenir un état pour chaque visiteur", "À sécuriser les communications HTTP", "À réduire les délais de transfert en accélérant le téléchargement des fichiers", "À permettre le téléchargement de plusieurs objets référencés sur une page web sur une seule connexion TCP"],
+      e: "HTTP est « sans état » : le serveur oublie tout entre deux requêtes. Le cookie (valeur donnée par le serveur, renvoyée par le navigateur à chaque requête) lui permet de te reconnaître : panier, connexion… Plusieurs objets sur une seule connexion TCP, c'est la connexion persistante, pas les cookies." },
+    { s: "http", d: null, annale: "Cookies3", q: "Les cookies",
+      r: ["sont des valeurs choisies par les serveurs pour des clients", "correspondent à des identifiants choisis par les clients", "ne sont jamais diffusés par les clients", "correspondent à des préférences exprimées par les clients auprès des serveurs"],
+      e: "C'est le serveur qui crée la valeur du cookie (en-tête Set-Cookie de sa réponse). Le navigateur la stocke puis la renvoie (en-tête Cookie) à chaque nouvelle requête vers ce site : le client la diffuse donc bien." },
+    { s: "http", d: 53, annale: "DNS1", q: "DNS",
+      r: ["est un protocole applicatif, qui fonctionne en mode client-serveur et qui repose sur UDP ou sur TCP", "est un protocole de transport", "est un protocole applicatif, qui repose toujours sur UDP et qui permet de retrouver l'adresse IP d'une machine hôte", "ne tombe jamais en panne"],
+      e: "DNS = application « réseau » (diapo 40), en client-serveur, port 53 en TCP ou UDP (tableau diapo 53). Le piège : « toujours sur UDP ». C'est UDP la plupart du temps, mais TCP est possible." },
+    { s: "http", d: 41, annale: "DNS2", q: "Un serveur DNS local",
+      r: ["est à la fois un serveur et un client qui peut interroger tous les serveurs de la hiérarchie DNS", "connaît toutes les correspondances URL - adresse IP de l'Internet", "ralentit toujours le temps de réponse à une requête DNS", "ne tombe jamais en panne"],
+      e: "Le DNS local (donné par DHCP, diapo 41) reçoit ta question : il est SERVEUR pour toi. S'il ne connaît pas la réponse, il interroge lui-même les serveurs racine, puis .com, puis celui du domaine : il est alors CLIENT. Il garde les réponses en cache, ce qui accélère les requêtes suivantes." }
+
   ]
 });

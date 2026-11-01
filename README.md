@@ -55,6 +55,15 @@ Dans le fichier du chapitre, chaque question ressemble à ça :
 - `q` = la question, `e` = l'explication
 - `r` = les réponses : **la première est toujours la bonne** (le site mélange l'ordre tout seul)
 
+## Annales
+
+- Les questions d'annales sont rangées dans les chapitres (`data/ch*.js`), dans la section où se trouve la réponse,
+  avec un champ en plus : `annale: "Tag"` (l'étiquette de la question dans le corrigé, ex. `"Delai2"`).
+  Une question peut avoir `d: null` si elle n'est pas dans les diapos, et `img: "annales/xxx.webp"` pour un schéma.
+- `data/annales.js` liste les sujets : l'ordre des tags, le barème (+2 / −0,5) et le PDF du corrigé (`pdf/annales/`).
+- Pour ajouter une annale : ajoute ses questions dans les chapitres avec leur `annale: "Tag"`,
+  puis un bloc dans `COURS.annales` avec la liste des tags dans l'ordre du sujet.
+
 ## Ajouter un nouveau CM
 
 Le plus simple : envoie le PDF à Claude, il te renvoie les fichiers à ajouter.

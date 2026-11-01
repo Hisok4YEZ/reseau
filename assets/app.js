@@ -64,6 +64,24 @@
     });
   });
 
+  /* annales : chaque question d'annale a un champ annale: "Tag" ; data/annales.js donne l'ordre de chaque sujet */
+  var annales = C.annales || [], anById = {}, qByTag = {};
+  allQ.forEach(function (q) { if (q.annale) { q.years = []; qByTag[q.annale] = q; } });
+  annales.forEach(function (a) {
+    anById[a.id] = a;
+    a.qs = a.tags.map(function (t) {
+      var q = qByTag[t];
+      if (!q) console.warn("[Mif05] Annale " + a.id + " : question introuvable pour le tag", t);
+      else q.years.push(a);
+      return q;
+    }).filter(Boolean);
+  });
+  var annaleQs = allQ.filter(function (q) { return q.annale; });
+  function yearsLabel(q) { return (q.years || []).map(function (a) { return a.court; }).join(" · "); }
+  function annaleTag(q) { return q.annale ? '<span class="tag an">📝 Annale ' + esc(yearsLabel(q)) + "</span>" : ""; }
+  function countAn(qs) { return qs.filter(function (q) { return q.annale; }).length; }
+  function anTxt(k) { return k ? " · 📝 " + k + " d'annale" + (k > 1 ? "s" : "") : ""; }
+
   /* ------------------------------------------------------------------ */
   /* Sauvegarde locale (progression)                                     */
   /* ------------------------------------------------------------------ */
@@ -238,7 +256,7 @@
   /* replace = true : on remplace l'entrée d'historique (le bouton « retour » ne relance pas le QCM) */
   function startQuiz(qs, opts, replace) {
     if (!qs.length) return;
-    qs = shuffle(qs);
+    qs = opts.keepOrder ? qs.slice() : shuffle(qs);
     if (opts.n && opts.n < qs.length) qs = qs.slice(0, opts.n);
     quiz = {
       ids: qs.map(function (q) { return q.id; }),
@@ -248,6 +266,7 @@
       mode: opts.mode || "train",
       penalty: opts.penalty || 0,
       title: opts.title || "QCM",
+      annale: opts.annale || null,
       done: false
     };
     saveQuiz();
@@ -259,7 +278,13 @@
     z.answers.forEach(function (a) { if (a === null || a === "skip") sk++; else if (a === 0) ok++; else ko++; });
     var pts = z.mode === "exam" ? ok - z.penalty * ko : ok;
     var n = z.ids.length;
-    return { ok: ok, ko: ko, sk: sk, n: n, pts: pts, note: Math.max(0, pts) / n * 20 };
+    var r = { ok: ok, ko: ko, sk: sk, n: n, pts: pts, note: Math.max(0, pts) / n * 20 };
+    var a = z.annale && anById[z.annale];
+    if (a && a.bareme && z.mode === "exam") { // points « officiels » de l'annale : +2 / −0,5
+      r.raw = ok * a.bareme.juste + ko * a.bareme.faux;
+      r.rawMax = n * a.bareme.juste;
+    }
+    return r;
   }
 
   /* ------------------------------------------------------------------ */
@@ -331,6 +356,13 @@
     h += '<a class="btn" href="#/qcm/go?f=erreurs"' + (nbWrong ? "" : " disabled") + ">Mes erreurs (" + nbWrong + ")</a>";
     h += "</div>";
 
+    if (annales.length) {
+      var sa = stat(annaleQs);
+      h += '<a class="card resume an" href="#/qcm" style="margin-top:12px"><span class="grow"><b>📝 Annales des QCM</b><br><span class="small muted">' +
+        plural(annales.length, "sujet") + " corrigé" + (annales.length > 1 ? "s" : "") + " · " + plural(annaleQs.length, "question") + " · " + sa.good + " réussie" + (sa.good > 1 ? "s" : "") +
+        '</span></span><span aria-hidden="true">→</span></a>';
+    }
+
     h += '<h2 class="h-sec">Chapitres</h2><div class="stack">';
     chapters.forEach(function (ch) {
       var s = stat(ch.questions), lus = ch.sections.filter(function (x) { return store.lu[x.key]; }).length;
@@ -338,7 +370,7 @@
       h += '<div class="num">CHAPITRE ' + ch.num + " · " + esc(ch.source) + "</div>";
       h += "<h3>" + esc(ch.titre) + "</h3><p>" + esc(ch.resume) + "</p>";
       h += '<div class="bar"><i style="width:' + s.pct + '%"></i></div>';
-      h += '<div class="meta"><span>' + lus + "/" + ch.sections.length + " sections lues</span><span>" + s.good + "/" + s.total + " questions réussies</span></div>";
+      h += '<div class="meta"><span>' + lus + "/" + ch.sections.length + " sections lues</span><span>" + s.good + "/" + s.total + " questions réussies</span>" + (countAn(ch.questions) ? "<span>📝 " + countAn(ch.questions) + " d'annales</span>" : "") + "</div>";
       h += "</a>";
     });
     h += "</div>";
@@ -379,7 +411,7 @@
   function secItems(ch) {
     return ch.sections.map(function (s, i) {
       var d = s.diapos && s.diapos.length ? (s.diapos.length > 1 ? "diapos " + s.diapos[0] + "–" + s.diapos[s.diapos.length - 1] : "diapo " + s.diapos[0]) : "";
-      return '<li><a href="#/cours/' + ch.id + "/" + s.id + '"><span class="n">' + ch.num + "." + (i + 1) + '</span><span class="grow"><div class="t">' + esc(s.titre) + '</div><div class="d">' + d + " · " + plural(s.questions.length, "question") + "</div></span>" + (store.lu[s.key] ? '<span class="chk" title="Lue">✓</span>' : "") + "</a></li>";
+      return '<li><a href="#/cours/' + ch.id + "/" + s.id + '"><span class="n">' + ch.num + "." + (i + 1) + '</span><span class="grow"><div class="t">' + esc(s.titre) + '</div><div class="d">' + d + " · " + plural(s.questions.length, "question") + anTxt(countAn(s.questions)) + "</div></span>" + (store.lu[s.key] ? '<span class="chk" title="Lue">✓</span>' : "") + "</a></li>";
     }).join("");
   }
   function doSearch(raw) {
@@ -426,7 +458,7 @@
     var h = '<div class="crumbs"><a href="#/cours">Cours</a> › Chapitre ' + ch.num + "</div>";
     h += '<section class="card chhead" style="--c:' + ch.couleur + '"><div class="src">' + esc(ch.source) + "</div><h1>" + esc(ch.titre) + "</h1><p>" + esc(ch.resume) + "</p></section>";
     h += '<h2 class="h-sec">Sections</h2><ul class="card seclist" style="--c:' + ch.couleur + '">' + secItems(ch) + "</ul>";
-    h += '<h2 class="h-sec">S\'entraîner</h2><div class="card pad"><div class="row"><div class="grow"><b>QCM du chapitre</b><div class="small muted">' + plural(ch.questions.length, "question") + " · " + s.good + " réussie" + (s.good > 1 ? "s" : "") + "</div></div></div>";
+    h += '<h2 class="h-sec">S\'entraîner</h2><div class="card pad"><div class="row"><div class="grow"><b>QCM du chapitre</b><div class="small muted">' + plural(ch.questions.length, "question") + anTxt(countAn(ch.questions)) + " · " + s.good + " réussie" + (s.good > 1 ? "s" : "") + "</div></div></div>";
     h += '<div class="bar" style="margin:10px 0 14px;--c:' + ch.couleur + '"><i style="width:' + s.pct + "%;background:" + ch.couleur + '"></i></div>';
     h += '<div class="btns two"><a class="btn primary" href="#/qcm/go?ch=' + ch.id + '">Tout le chapitre</a><a class="btn" href="#/qcm/go?ch=' + ch.id + '&n=10">10 au hasard</a></div></div>';
     app.innerHTML = h;
@@ -461,7 +493,7 @@
     h += "</div>";
 
     if (s.questions.length) {
-      h += '<a class="btn primary block" style="margin-top:18px" href="#/qcm/go?ch=' + ch.id + "&s=" + s.id + '">S\'entraîner sur cette section (' + plural(s.questions.length, "question") + ")</a>";
+      h += '<a class="btn primary block" style="margin-top:18px" href="#/qcm/go?ch=' + ch.id + "&s=" + s.id + '">S\'entraîner sur cette section (' + plural(s.questions.length, "question") + (countAn(s.questions) ? ", dont " + countAn(s.questions) + " d'annale" + (countAn(s.questions) > 1 ? "s" : "") : "") + ")</a>";
     }
 
     // précédent / suivant (à travers les chapitres)
@@ -487,10 +519,13 @@
     if (!S.f) S.f = "toutes";
     if (!S.mode) S.mode = "train";
     if (S.pen === undefined) S.pen = 0.5;
+    if (!S.o) S.o = "toutes";
 
     function pool() {
       return allQ.filter(function (q) {
         if (S.chs.indexOf(q.ch.id) < 0) return false;
+        if (S.o === "annales" && !q.annale) return false;
+        if (S.o === "site" && q.annale) return false;
         var r = store.q[q.id];
         if (S.f === "nouvelles") return !r;
         if (S.f === "erreurs") return r && !r.last;
@@ -500,7 +535,20 @@
     function draw() {
       var p = pool(), n = S.n === "all" ? p.length : Math.min(S.n, p.length);
       var h = '<h1 class="h-page">QCM</h1><p class="muted" style="margin:0">Comme au contrôle : <b>une seule bonne réponse</b> par question. L\'ordre des réponses change à chaque fois.</p>';
-      h += '<div class="card pad" style="margin-top:14px">';
+
+      if (annales.length) {
+        h += '<h2 class="h-sec">📝 Annales — les vrais QCM</h2><div class="stack">';
+        annales.forEach(function (a) {
+          var st = stat(a.qs);
+          h += '<div class="card pad annale-card"><div class="row"><div class="grow"><b>' + esc(a.titre) + '</b><div class="small muted">' + plural(a.qs.length, "question") +
+            " · barème +" + a.bareme.juste + " / " + String(a.bareme.faux).replace(".", ",").replace("-", "−") + " · " + st.good + " réussie" + (st.good > 1 ? "s" : "") +
+            '</div></div><a class="linkpill" href="' + esc(a.fichier) + '" target="_blank" rel="noopener">Corrigé PDF</a></div>';
+          h += '<div class="btns two" style="margin-top:12px"><button class="btn primary" data-an="' + a.id + '" data-mode="exam">Conditions réelles</button><button class="btn" data-an="' + a.id + '" data-mode="train">Entraînement</button></div></div>';
+        });
+        h += '</div><p class="help">« Conditions réelles » : questions dans l\'ordre du sujet, pas de correction avant la fin, barème de l\'annale. Chaque question d\'annale est aussi rangée dans la section du cours où se trouve la réponse.</p>';
+        h += '<h2 class="h-sec">QCM sur mesure</h2>';
+      }
+      h += '<div class="card pad"' + (annales.length ? "" : ' style="margin-top:14px"') + ">";
 
       h += '<div class="field" style="margin-top:0"><span class="lbl">Chapitres</span><div class="chips">';
       chapters.forEach(function (c) {
@@ -515,14 +563,19 @@
       h += '<div class="field"><span class="lbl">Quelles questions ?</span><div class="seg" data-k="f">' +
         [["toutes", "Toutes"], ["nouvelles", "Jamais vues"], ["erreurs", "Mes erreurs"]].map(function (v) { return '<button data-v="' + v[0] + '" aria-pressed="' + (S.f === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</div></div>";
 
+      if (annales.length) {
+        h += '<div class="field"><span class="lbl">Origine</span><div class="seg" data-k="o">' +
+          [["toutes", "Toutes"], ["annales", "📝 Annales"], ["site", "Du site"]].map(function (v) { return '<button data-v="' + v[0] + '" aria-pressed="' + (S.o === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</div></div>";
+      }
+
       h += '<div class="field"><span class="lbl">Mode</span><div class="seg" data-k="mode">' +
         [["train", "Entraînement"], ["exam", "Examen"]].map(function (v) { return '<button data-v="' + v[0] + '" aria-pressed="' + (S.mode === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</div>";
       h += '<div class="help">' + (S.mode === "train" ? "Correction et explication juste après chaque réponse." : "Pas de correction avant la fin, comme le vrai contrôle. Tu peux passer une question (0 pt).") + "</div></div>";
 
       if (S.mode === "exam") {
         h += '<div class="field"><span class="lbl">Réponse fausse</span><div class="seg" data-k="pen">' +
-          [[0, "0 pt"], [0.5, "−0,5 pt"], [1, "−1 pt"]].map(function (v) { return '<button data-v="' + v[0] + '" aria-pressed="' + (S.pen === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</div>";
-        h += '<div class="help">Barème du CM : juste +1, pas de réponse 0, faux 0 / −0,5 / −1 selon le contrôle.</div></div>';
+          [[0, "0"], [0.25, "−0,25"], [0.5, "−0,5"], [1, "−1"]].map(function (v) { return '<button data-v="' + v[0] + '" aria-pressed="' + (S.pen === v[0]) + '">' + v[1] + "</button>"; }).join("") + "</div>";
+        h += '<div class="help">Pour 1 point par bonne réponse. Barème du CM : faux = 0 / −0,5 / −1 selon le contrôle. Annales : +2 / −0,5, c\'est-à-dire −0,25.</div></div>';
       }
 
       h += '<button class="btn primary block" id="start" style="margin-top:20px"' + (n ? "" : " disabled") + ">" + (n ? "Lancer · " + plural(n, "question") : "Aucune question avec ces filtres") + "</button>";
@@ -548,15 +601,27 @@
       });
       document.getElementById("start").onclick = function () {
         var names = S.chs.length === chapters.length ? "Tous les chapitres" : S.chs.map(function (id) { return chById[id].court; }).join(", ");
-        startQuiz(pool(), { n: S.n === "all" ? 0 : S.n, mode: S.mode, penalty: S.mode === "exam" ? S.pen : 0, title: names + (S.f === "erreurs" ? " · erreurs" : S.f === "nouvelles" ? " · nouvelles" : "") });
+        startQuiz(pool(), { n: S.n === "all" ? 0 : S.n, mode: S.mode, penalty: S.mode === "exam" ? S.pen : 0, title: names + (S.o === "annales" ? " · annales" : "") + (S.f === "erreurs" ? " · erreurs" : S.f === "nouvelles" ? " · nouvelles" : "") });
       };
+      app.querySelectorAll("[data-an]").forEach(function (b) {
+        b.onclick = function () { startAnnale(b.getAttribute("data-an"), b.getAttribute("data-mode")); };
+      });
     }
     draw();
   }
 
-  /* lancement direct d'un QCM depuis un lien : #/qcm/go?ch=transport&s=udp&n=10  ou  ?f=erreurs */
+  /* une annale : dans l'ordre du sujet ; « exam » = conditions réelles (barème +2 / −0,5 → −0,25 pour 1) */
+  function startAnnale(id, mode, replace) {
+    var a = anById[id]; if (!a) return go("#/qcm");
+    var exam = mode === "exam";
+    startQuiz(a.qs, { keepOrder: true, mode: exam ? "exam" : "train", penalty: exam ? -a.bareme.faux / a.bareme.juste : 0, title: "Annale " + a.titre, annale: a.id }, replace);
+  }
+
+  /* lancement direct d'un QCM depuis un lien : #/qcm/go?ch=transport&s=udp&n=10  ou  ?f=erreurs  ou  ?annale=qcm1-2023&mode=exam */
   function viewQcmGo(query) {
     var qs = allQ, title = "QCM";
+    if (query.annale && anById[query.annale]) return startAnnale(query.annale, query.mode === "exam" ? "exam" : "train", true);
+    if (query.f === "annales") { qs = annaleQs; title = "Toutes les annales"; }
     if (query.f === "erreurs") { qs = wrongQs(); title = "Mes erreurs"; }
     else if (query.f === "recherche") {
       var terms = norm(query.q || "").split(/\s+/).filter(function (t) { return t.length > 1; });
@@ -582,7 +647,11 @@
       h += '<a class="linkpill" href="' + sl.pdf + '" target="_blank" rel="noopener">PDF ' + sl.doc.id.toUpperCase() + " p." + sl.page + "</a>";
     }
     if (q.sec) h += '<a class="linkpill" href="#/cours/' + q.ch.id + "/" + q.sec.id + '">📖 Cours ' + q.ch.num + "." + (q.sec.idx + 1) + " · " + esc(q.sec.titre) + "</a>";
+    (q.years || []).forEach(function (a) {
+      h += '<a class="linkpill" href="' + esc(a.fichier) + '" target="_blank" rel="noopener">📝 Corrigé ' + esc(a.court) + "</a>";
+    });
     h += "</div>";
+    if (!sl && q.annale) h += '<p class="small muted" style="margin:8px 0 0">Pas dans les diapos de cette année : la réponse est dans la section du cours ci-dessus.</p>';
     if (sl && sl.img) h += '<button type="button" class="slide-inline" data-d="' + q.d + '" aria-label="Agrandir la ' + esc(sl.label) + '"><img loading="lazy" src="' + sl.img + '" alt="' + esc(sl.label) + '"></button>';
     return h + "</div>";
   }
@@ -595,8 +664,9 @@
     var n = quiz.ids.length;
 
     var h = '<div class="qtop"><span class="count">' + (i + 1) + "/" + n + '</span><div class="bar grow"><i style="width:' + Math.round(100 * i / n) + '%"></i></div><button class="btn ghost" id="quit" style="min-height:36px;padding:6px 10px">Quitter</button></div>';
-    h += '<article class="card qcard"><div class="row" style="flex-wrap:wrap;gap:6px"><span class="tag"><span class="dot" style="background:' + q.ch.couleur + '"></span>' + esc(q.ch.court || q.ch.titre) + "</span>" + (q.sec ? '<span class="tag wrap">' + esc(q.sec.titre) + "</span>" : "") + (quiz.mode === "exam" ? '<span class="tag">Examen</span>' : "") + "</div>";
+    h += '<article class="card qcard"><div class="row" style="flex-wrap:wrap;gap:6px"><span class="tag"><span class="dot" style="background:' + q.ch.couleur + '"></span>' + esc(q.ch.court || q.ch.titre) + "</span>" + annaleTag(q) + (q.sec && quiz.mode !== "exam" ? '<span class="tag wrap">' + esc(q.sec.titre) + "</span>" : "") + (quiz.mode === "exam" ? '<span class="tag">' + (quiz.annale ? "Conditions réelles" : "Examen") + "</span>" : "") + "</div>";
     h += '<div class="qtext">' + esc(q.q) + "</div>";
+    if (q.img) h += '<a class="qimg" href="' + esc(q.img) + '" target="_blank" rel="noopener" aria-label="Agrandir le schéma"><img src="' + esc(q.img) + '" alt="Schéma de la question"></a>';
     h += '<div class="choices' + (answered && train ? " locked" : "") + '">';
     order.forEach(function (ri, k) {
       var cls = "choice";
@@ -669,10 +739,12 @@
     var pct = Math.round(100 * P.ok / P.n);
     var col = pct >= 75 ? "var(--ok)" : pct >= 50 ? "var(--warn)" : "var(--ko)";
     var R = 52, L = 2 * Math.PI * R;
-    var h = '<h1 class="h-page">Résultat</h1><p class="muted" style="margin:0 0 12px">' + esc(z.title) + " · " + (z.mode === "exam" ? "mode examen" : "entraînement") + "</p>";
+    var h = '<h1 class="h-page">Résultat</h1><p class="muted" style="margin:0 0 12px">' + esc(z.title) + " · " + (z.mode === "exam" ? (z.annale ? "conditions réelles" : "mode examen") : "entraînement") + "</p>";
     h += '<section class="card score"><div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="' + R + '" fill="none" stroke="var(--bg2)" stroke-width="12"/><circle cx="60" cy="60" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + L + '" stroke-dashoffset="' + (L * (1 - pct / 100)) + '"/></svg><b>' + pct + "%</b></div>";
     h += '<div class="big">' + (Math.round(P.note * 10) / 10).toString().replace(".", ",") + '<span style="font-size:1.2rem;color:var(--ink3)"> /20</span></div>';
-    h += '<div class="sub">' + P.ok + " juste" + (P.ok > 1 ? "s" : "") + " · " + P.ko + " faux" + (P.sk ? " · " + P.sk + " sans réponse" : "") + (z.mode === "exam" && z.penalty ? " · faux = −" + String(z.penalty).replace(".", ",") : "") + "</div></section>";
+    h += '<div class="sub">' + P.ok + " juste" + (P.ok > 1 ? "s" : "") + " · " + P.ko + " faux" + (P.sk ? " · " + P.sk + " sans réponse" : "") + (z.mode === "exam" && z.penalty && P.raw === undefined ? " · faux = −" + String(z.penalty).replace(".", ",") : "") + "</div>";
+    if (P.raw !== undefined) h += '<div class="sub"><b>' + String(P.raw).replace(".", ",") + " pts sur " + P.rawMax + "</b> avec le barème de l'annale (+2 juste, −0,5 faux, 0 sans réponse)</div>";
+    h += "</section>";
 
     var wrongIdx = [];
     z.ids.forEach(function (id, k) { if (z.answers[k] !== 0) wrongIdx.push(k); });
@@ -683,7 +755,8 @@
     h += '<h2 class="h-sec">Correction détaillée</h2><ul class="card rlist">';
     z.ids.forEach(function (id, k) {
       var q = qById[id], a = z.answers[k], ok = a === 0, sk = a === null || a === "skip";
-      h += '<li><details' + (ok ? "" : " open") + '><summary><span class="ic ' + (ok ? "ok" : sk ? "sk" : "ko") + '">' + (ok ? "✓" : sk ? "–" : "✗") + '</span><span class="grow"><b>' + (k + 1) + ".</b> " + esc(q.q) + "</span></summary><div class=\"body\">";
+      h += '<li><details' + (ok ? "" : " open") + '><summary><span class="ic ' + (ok ? "ok" : sk ? "sk" : "ko") + '">' + (ok ? "✓" : sk ? "–" : "✗") + '</span><span class="grow"><b>' + (k + 1) + ".</b> " + esc(q.q) + (q.annale ? " " + annaleTag(q) : "") + "</span></summary><div class=\"body\">";
+      if (q.img) h += '<a class="qimg" href="' + esc(q.img) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(q.img) + '" alt="Schéma de la question"></a>';
       if (!ok && !sk) h += '<div class="ans bad">Ta réponse : ' + esc(q.r[a]) + "</div>";
       if (sk) h += '<div class="ans muted">Pas de réponse</div>';
       h += '<div class="ans good">✓ ' + esc(q.r[0]) + "</div>";
@@ -701,16 +774,24 @@
   /* Vue : documents (PDF + diapos)                                      */
   /* ------------------------------------------------------------------ */
   function viewDocs() {
-    var h = '<h1 class="h-page">Diapos & PDF</h1><p class="muted" style="margin:0 0 14px">Les CM de l\'UE. Touche une diapo pour l\'ouvrir en grand, glisse pour passer à la suivante.</p><div class="stack">';
-    C.docs.forEach(function (d) {
-      var last = d.premiere ? d.premiere + d.nb - 1 : null;
-      h += '<div class="card doc"><span class="tag">' + esc(d.type) + "</span><h3 style=\"margin-top:8px\">" + esc(d.titre) + '</h3><div class="small muted">' + d.nb + " pages" + (last ? " · diapos " + d.premiere + " à " + last : "") + "</div>";
-      h += '<div class="btns two" style="margin-top:12px">';
-      h += '<a class="btn" href="' + esc(d.fichier) + '" target="_blank" rel="noopener">Ouvrir le PDF</a>';
-      h += d.slides ? '<a class="btn primary" href="#/diapos/' + d.id + '">Parcourir les diapos</a>' : "<span></span>";
-      h += "</div></div>";
+    var h = '<h1 class="h-page">Diapos & PDF</h1><p class="muted" style="margin:0 0 14px">Les CM de l\'UE. Touche une diapo pour l\'ouvrir en grand, glisse pour passer à la suivante.</p>';
+    var groups = [["CM", "Cours magistraux"], ["TD", "TD"], ["Annale", "📝 Annales corrigées"]];
+    groups.forEach(function (g) {
+      var ds = C.docs.filter(function (d) { return d.type === g[0]; });
+      if (!ds.length) return;
+      h += '<h2 class="h-sec">' + g[1] + '</h2><div class="stack">';
+      ds.forEach(function (d) {
+        var last = d.premiere ? d.premiere + d.nb - 1 : null;
+        h += '<div class="card doc"><span class="tag' + (d.type === "Annale" ? " an" : "") + '">' + esc(d.type) + "</span><h3 style=\"margin-top:8px\">" + esc(d.titre) + '</h3><div class="small muted">' + d.nb + " pages" + (last ? " · diapos " + d.premiere + " à " + last : "") + "</div>";
+        h += '<div class="btns two" style="margin-top:12px">';
+        h += '<a class="btn" href="' + esc(d.fichier) + '" target="_blank" rel="noopener">Ouvrir le PDF</a>';
+        if (d.slides) h += '<a class="btn primary" href="#/diapos/' + d.id + '">Parcourir les diapos</a>';
+        else if (anById[d.id]) h += '<a class="btn primary" href="#/qcm/go?annale=' + d.id + '&mode=exam">Faire l\'annale</a>';
+        else h += "<span></span>";
+        h += "</div></div>";
+      });
+      h += "</div>";
     });
-    h += "</div>";
     app.innerHTML = h;
   }
   function viewDoc(id) {

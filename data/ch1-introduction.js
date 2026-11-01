@@ -117,7 +117,8 @@ COURS.chapitres.push({
 <div class="exemple"><b>Avec 5 fragments</b> (chacun fait L/5 = 1,5 Mbits → 1 s par lien) : pendant que le routeur 1 envoie le fragment 1, la source envoie déjà le fragment 2. Tout se chevauche ! Le dernier fragment quitte la source à 5 s, puis il lui reste 2 liens → 5 + 2 = <b>7 s</b>. Formule du CM : <b>T = 7L/(5C) = 7 s</b>.</div>
 <p>C'est l'<b>effet « pipeline »</b> : découper accélère le transfert car les liens travaillent en parallèle.</p>
 <div class="bonus"><b>Formule générale (pour t'entraîner)</b> : avec N liens et P paquets de même taille, T = (N + P − 1) × L/(P·C). Vérifie : N = 3, P = 5 → 7 × L/(5C) ✔.</div>
-<div class="piege"><b>« Toujours mieux ? »</b> Non : chaque paquet porte un <b>en-tête</b>. Avec des paquets minuscules, on transmet surtout des en-têtes et les routeurs ont plus de travail. Il y a donc un compromis.</div>`
+<div class="piege"><b>« Toujours mieux ? »</b> Non : chaque paquet porte un <b>en-tête</b>. Avec des paquets minuscules, on transmet surtout des en-têtes et les routeurs ont plus de travail. Il y a donc un compromis.</div>
+<div class="annale"><b>📝 Tombé en annale</b> : la fragmentation <b>peut</b> (pas « toujours ») améliorer le délai, et elle rend les <b>erreurs de transmission moins gênantes</b> : si un bit est abîmé, on ne renvoie que le petit paquet concerné, pas tout le message.</div>`
     },
 
     {
@@ -151,8 +152,31 @@ COURS.chapitres.push({
 
 <div class="exemple"><b>Exemple chiffré</b> : paquet de 1 500 octets = 12 000 bits, lien de 100 Mb/s → émission = 12 000 / 100 000 000 = <b>120 µs</b>. Câble de 2 000 km, v = 2×10<sup>8</sup> m/s → propagation = 2×10<sup>6</sup> / 2×10<sup>8</sup> = <b>10 ms</b>.</div>
 
+<div class="annale"><b>📝 Tombé en annale — ce qui dépend de la taille du paquet</b>
+<ul>
+  <li><b>Émission</b> (L/C) : <b>oui</b>, et c'est la seule.</li>
+  <li><b>Propagation</b> (d/v) : <b>non</b> → un gros paquet et un petit ACK ont la <b>même</b> propagation.</li>
+  <li><b>Attente</b> : <b>non</b>, elle dépend des paquets <i>devant</i> dans la file → statistiquement la même pour un paquet et un ACK.</li>
+</ul>
+Le délai <b>le moins prévisible</b> = l'<b>attente</b> (il change tout le temps).</div>
+
 <h4>Délai de bout-en-bout [d26]</h4>
 <p>Le schéma du CM montre un paquet qui passe de l'expéditeur à un intermédiaire puis au destinataire. Sur chaque lien : <b>émission + propagation</b>, et dans l'intermédiaire : éventuellement de l'<b>attente</b>. La somme = le <b>délai de bout-en-bout d'un paquet = temps de transfert</b> (le temps de traitement est négligé sur le schéma).</p>
+
+<h4>Les 2 calculs qui tombent au QCM</h4>
+<div class="exemple"><b>Temps de transfert sur 1 lien</b> = émission + propagation = <b>L/C + d<sub>propag</sub></b><br>
+Paquet de 10 kbits, lien de 1 Mb/s, propagation 100 ms → 10 000 / 1 000 000 = 0,01 s = <b>10 ms</b> d'émission → total <b>110 ms</b>.<br>
+<small>Astuce : kbits / Mb/s = des millisecondes. 10 kbits / 1 Mb/s = 10 ms ; 10 kbits / 10 Mb/s = 1 ms.</small></div>
+<div class="exemple"><b>Temps d'attente</b> d'un paquet en position <b>k</b> dans le buffer = (k − 1) × L/C<br>
+6<sup>e</sup> position, paquets de 1 kbit, lien de 1 Mb/s → 5 paquets devant × 1 ms = <b>5 ms</b>.</div>
+
+<h4>Lire un chronogramme</h4>
+<p>Dans un schéma comme celui de la diapo 26, chaque lien est dessiné par un bloc incliné :</p>
+<ul>
+  <li>la <b>hauteur</b> du bloc (au départ) = la durée d'<b>émission</b> → bloc haut = émission longue = <b>petite capacité</b> ;</li>
+  <li>l'<b>inclinaison</b> des flèches (décalage vertical entre le départ et l'arrivée d'un bit) = la <b>propagation</b> → flèche qui descend beaucoup = propagation longue.</li>
+</ul>
+<figure class="fig"><img src="annales/liens1.webp" alt="Chronogramme : nœud A, lien I, nœud B, lien II, nœud C" loading="lazy"><figcaption>Annale 2023–24 : le bloc du lien II est plus haut (capacité plus petite) et plus incliné (propagation plus grande).</figcaption></figure>
 
 <h4>RTT [d27]</h4>
 <p><b>RTT = Round Trip Time</b> (temps aller-retour) : le temps pour qu'un paquet atteigne sa destination <b>et revienne</b> à la source. Il comprend traitement, attente, émission et propagation. On le mesure simplement avec la commande <code>ping</code>.</p>
@@ -186,7 +210,8 @@ COURS.chapitres.push({
 <p>Le paquet de la couche n est <b>encapsulé</b> (mis à l'intérieur) dans le paquet de la couche n−1 :</p>
 <p class="formule">[Paquet couche n−1] = [En-tête couche n−1] + [Paquet couche n]</p>
 <div class="analogie"><b>Analogie des enveloppes</b> : ta lettre (message) est mise dans une enveloppe avec le n° de bureau (segment), elle-même dans une enveloppe avec l'adresse postale (datagramme), elle-même dans le sac du facteur (trame). Chaque destinataire ouvre l'enveloppe qui le concerne.</div>
-<div class="exemple"><b>Exemple du CM</b> (Dx = données de la couche x, Hx = en-tête de la couche x) : <b>D3 = H4 + D4</b>, et comme D4 = H5 + D5, on a aussi <b>D3 = H4 + H5 + D5</b>. Les données de la couche 3, c'est tout le segment (en-tête transport compris).</div>
+<div class="exemple"><b>Exemple du CM</b> (Dx = données de la couche x, Hx = en-tête de la couche x) : <b>D3 = H4 + D4</b>, et comme D4 = H5 + D5, on a aussi <b>D3 = H4 + H5 + D5</b>. Les données de la couche 3, c'est tout le segment (en-tête transport compris).<br>
+<b>📝 Version annale</b> : <b>D2 = H3 + D3</b> et donc <b>D2 = H3 + H4 + D4</b>. Une couche ne met jamais son <i>propre</i> en-tête dans ses données (H2 n'est pas dans D2).</div>
 
 <h4>Pourquoi des couches ? [d30]</h4>
 <ul>
@@ -208,7 +233,8 @@ COURS.chapitres.push({
 </table>
 <div class="retenir"><b>Proche-en-proche vs bout-en-bout</b><br>
 • Couches <b>1, 2 et 3</b> = de <b>proche-en-proche</b> : elles agissent à chaque saut, entre deux équipements voisins.<br>
-• Couches <b>4 et 5</b> = de <b>bout-en-bout</b> : elles n'existent qu'aux deux extrémités (les terminaux), elles « se parlent » par-dessus tout le réseau.</div>`
+• Couches <b>4 et 5</b> = de <b>bout-en-bout</b> : elles n'existent qu'aux deux extrémités (les terminaux), elles « se parlent » par-dessus tout le réseau.<br>
+📝 Annales : <b>HTTP</b> (5) et <b>TCP</b> (4) sont de bout-en-bout, <b>IP</b> (3) de proche-en-proche. « Bout-en-bout » veut seulement dire <b>implémenté uniquement sur les terminaux</b> — ça ne veut pas dire fiable ni connecté (UDP est de bout-en-bout).</div>`
     }
   ],
 
@@ -353,6 +379,90 @@ COURS.chapitres.push({
       e: "Transport (4) et Application (5) n'existent qu'aux extrémités : bout-en-bout. Les couches 1, 2, 3 sont de proche-en-proche." },
     { s: "couches", d: 31, q: "Quelles couches sont dites « de proche-en-proche » ?",
       r: ["Les couches 1, 2 et 3", "Les couches 4 et 5", "Les couches 2 et 4", "Toutes les couches"],
-      e: "Elles agissent à chaque saut, entre équipements voisins : Physique, Liaison, Réseau." }
+      e: "Elles agissent à chaque saut, entre équipements voisins : Physique, Liaison, Réseau." },
+    /* =====================================================================
+       ANNALES — questions des vrais QCM (corrigés officiels)
+       annale: "Tag" = l'étiquette de la question dans le corrigé (voir data/annales.js)
+       ===================================================================== */
+    /* --- internet --- */
+    { s: "internet", d: 16, annale: "Unite2", q: "L'unité du délai de propagation d'un lien peut être en",
+      r: ["millisecondes", "Mbits", "Mbps ou Mb/s", "en %"],
+      e: "Le délai de propagation est une durée → ms ou µs. Mb/s = capacité (débit), % = taux d'erreur binaire, Mbits = une taille de données." },
+    { s: "internet", d: 15, annale: "Terminaux", q: "Les terminaux comprennent notamment",
+      r: ["les ordinateurs et les serveurs", "les ordinateurs, les serveurs et les routeurs", "les ordinateurs et les routeurs", "les ordinateurs, les serveurs, les routeurs et les commutateurs"],
+      e: "Terminaux = les extrémités qui génèrent ou reçoivent les paquets (PC, serveurs, mobiles). Routeurs et commutateurs ne font qu'acheminer : ce sont des nœuds, mais pas des terminaux." },
+
+    /* --- commutation --- */
+    { s: "commutation", d: 20, annale: "RC3", q: "Dans le mode Store & Forward d'un réseau à commutation de paquets",
+      r: ["un routeur ne peut envoyer un paquet sur un de ses ports de sortie que s'il a complètement reçu le paquet sur un de ses ports d'entrée",
+          "un routeur peut envoyer le début d'un paquet sur un de ses ports de sortie même s'il n'a pas complètement reçu le paquet sur un de ses ports d'entrée",
+          "un routeur peut envoyer le début d'un paquet sur un de ses ports de sortie dès qu'il a reçu les 150 premiers octets du paquet sur un de ses ports d'entrée",
+          "un routeur ne peut envoyer un paquet sur un de ses ports de sortie que si le buffer associé à ce port de sortie est vide"],
+      e: "Store-and-forward = stocker TOUT le paquet, puis le réémettre. Le buffer de sortie n'a pas besoin d'être vide : le paquet y attend simplement son tour." },
+    { s: "commutation", d: 21, annale: "Fragmentation1", q: "La fragmentation d'un message en plusieurs paquets",
+      r: ["peut améliorer le délai de bout-en-bout et rend les erreurs de transmission moins gênantes",
+          "améliore toujours le délai de bout-en-bout mais rend les erreurs de transmission plus gênantes",
+          "améliore toujours le délai de bout-en-bout et rend les erreurs de transmission moins gênantes",
+          "peut améliorer le délai de bout-en-bout mais rend les erreurs de transmission plus gênantes"],
+      e: "« Peut » et pas « toujours » : l'effet pipeline accélère, mais chaque paquet ajoute un en-tête (diapo 21 : « Toujours mieux ? »). Et si un bit est abîmé, on ne renvoie que le petit paquet concerné, pas tout le message → les erreurs sont moins gênantes." },
+
+    /* --- delais --- */
+    { s: "delais", d: 25, annale: "Delai1", q: "Quel délai est le moins prévisible pour un paquet ?",
+      r: ["le délai d'attente", "le délai d'émission (transmission)", "le délai de propagation", "le délai de traitement"],
+      e: "L'attente dépend du nombre de paquets déjà dans la file, qui change tout le temps (« très variable, [0, x] ms »). Les 3 autres se calculent : L/C, d/v, ~ns." },
+    { s: "delais", d: 25, annale: "Delai2", q: "Pour un même lien, le temps de propagation d'un paquet de données, de plus grande taille qu'un ACK (paquet d'acquittement), est en général",
+      r: ["identique à celui d'un ACK", "plus court pour un paquet que pour un ACK", "plus long pour un paquet que pour un ACK", "long, mais celui d'un ACK est souvent négligeable"],
+      e: "Propagation = d/v : elle dépend de la longueur du lien et de la vitesse du signal, PAS de la taille du paquet. (C'est l'émission L/C qui dépend de la taille.)" },
+    { s: "delais", d: 25, annale: "Delai4", q: "Pour un même lien, le temps d'attente d'un paquet de données, de plus grande taille qu'un ACK (paquet d'acquittement), est a priori",
+      r: ["statistiquement identique à celui d'un ACK", "plus court pour un paquet que pour un ACK", "plus long pour un paquet que pour un ACK", "long, mais celui d'un ACK est souvent négligeable"],
+      e: "Le temps d'attente dépend des paquets qui sont DEVANT dans la file, pas de la taille du paquet qui attend. En moyenne, un gros paquet et un ACK attendent donc autant." },
+    { s: "delais", d: 25, annale: "Delai5", q: "Le temps d'attente d'un paquet est a priori",
+      r: ["indépendant de la taille du paquet", "plus court si le paquet est petit", "plus long si le paquet est long", "négligeable quelle que soit la taille du paquet"],
+      e: "L'attente dépend de ce qu'il y a devant dans le buffer, pas de la taille du paquet lui-même. Et elle n'est pas négligeable : elle peut atteindre plusieurs ms en cas de congestion." },
+    { s: "delais", d: 26, annale: "Liens1", img: "annales/liens1.webp", q: "Le schéma ci-dessous représente le déroulement du délai de bout-en-bout d'un paquet sur 2 liens.",
+      r: ["La capacité d'émission du lien II est plus petite que celle du lien I mais son délai de propagation est plus grand",
+          "La capacité d'émission du lien II et son délai de propagation sont plus grands que ceux du lien I",
+          "La capacité d'émission du lien II et son délai de propagation sont plus petits que ceux du lien I",
+          "La capacité d'émission du lien II est plus grande que celle du lien I mais son délai de propagation est plus petit"],
+      e: "Lecture du chronogramme (diapo 26) : la HAUTEUR du bloc au départ = durée d'émission ; l'INCLINAISON des flèches = propagation. Sur le lien II, le bloc est plus haut → émission plus longue → capacité plus PETITE (L/C plus grand). Et les flèches descendent plus → propagation plus grande." },
+    { s: "delais", d: 27, annale: "RTT1", q: "Le RTT mesure",
+      r: ["un délai aller-retour", "un délai aller-retour hors temps d'attente", "un délai aller", "un délai aller hors temps d'attente"],
+      e: "RTT = Round Trip Time = temps aller-retour, et il comprend TOUT : traitement, attente, émission et propagation (diapo 27)." },
+    { s: "delais", d: 26, annale: "TT1", q: "Le temps de transfert d'un paquet de 1 kbits sur un lien ayant une capacité de 1 Mb/s et un délai de propagation de 100 ms est de",
+      r: ["101 ms", "0,110 s", "11 ms", "0,111 s"],
+      e: "Temps de transfert = émission + propagation. Émission = L/C = 1 000 / 1 000 000 = 0,001 s = 1 ms. Total = 1 + 100 = 101 ms." },
+    { s: "delais", d: 26, annale: "TT2", q: "Le temps de transfert d'un paquet de 10 kbits sur un lien ayant une capacité de 1 Mb/s et un délai de propagation de 100 ms est de",
+      r: ["110 ms", "1,01 s", "101 ms", "0,011 s"],
+      e: "Émission = 10 000 / 1 000 000 = 0,01 s = 10 ms. Total = 10 + 100 = 110 ms. (101 ms est le piège : c'est le résultat pour 1 kbit.)" },
+    { s: "delais", d: 26, annale: "TT3", q: "Le temps de transfert d'un paquet de 10 kbits sur un lien ayant une capacité de 10 Mb/s et un délai de propagation de 10 ms est de",
+      r: ["11 ms", "0,01 s", "110 ms", "0,111 s"],
+      e: "Émission = 10 000 / 10 000 000 = 0,001 s = 1 ms. Total = 1 + 10 = 11 ms." },
+    { s: "delais", d: 25, annale: "TA", q: "Quel sera le temps d'attente d'un paquet qui se trouve en 6e position dans le buffer d'un routeur (impliquant que 5 autres paquets doivent être transmis avant lui) ? Les paquets ont tous une taille de 1 kbits et le lien de communication associé à ce buffer est de 1 Mb/s.",
+      r: ["5 ms", "0,05 s", "6 ms", "0,06 s"],
+      e: "Il attend que les 5 paquets devant lui soient émis. Un paquet = L/C = 1 000 / 1 000 000 = 1 ms. Attente = 5 × 1 ms = 5 ms. (Sa propre émission, la 6e ms, n'est pas de l'attente.)" },
+
+    /* --- couches --- */
+    { s: "couches", d: 29, annale: "Paquet", q: "Un datagramme, un segment et une trame appartiennent respectivement",
+      r: ["à la couche 3, couche 4 et couche 2", "à la couche 2, couche 3 et couche 4", "à la couche 4, couche 3 et couche 2", "à la couche 4, couche 2 et couche 3"],
+      e: "Datagramme = Réseau (3), segment = Transport (4), trame = Liaison (2). Attention à l'ordre imposé par la question !" },
+    { s: "couches", d: 29, annale: "Entete", q: "Soient Hx et Dx respectivement l'en-tête et les données associés à la couche x. D'après le principe d'encapsulation, on a :",
+      r: ["D2 = H3 + D3 et D2 = H3 + H4 + D4", "D2 = H3 + H4 + D3", "D2 = H2 + H3 + D3", "D3 = H2 + D2"],
+      e: "Les données de la couche 2, c'est le paquet complet de la couche 3 : D2 = H3 + D3. Et comme D3 = H4 + D4, on a aussi D2 = H3 + H4 + D4. Une couche ne met jamais son propre en-tête dans ses données (H2 n'est pas dans D2)." },
+    { s: "couches", d: 30, annale: "Pileprotocolaire", q: "L'architecture en 5 couches protocolaires d'Internet permet",
+      r: ["une meilleure modularité", "une vitesse plus rapide des communications", "d'éviter la redondance de fonctions", "le cross-layer (échanges entre couches n et n + 2)"],
+      e: "Avantage cité diapo 30 : la modularité. La redondance et l'impossibilité du cross-layer sont des INCONVÉNIENTS, et les couches ne rendent pas le réseau plus rapide." },
+    { s: "couches", d: 30, annale: "Pileprotocolaire2", q: "L'architecture en 5 couches protocolaires d'Internet",
+      r: ["implique parfois la redondance de fonctions", "permet à la couche n+1 d'offrir des services à la couche n", "ne permet pas la modularité", "permet le cross-layer (échanges entre couches n et n + 2)"],
+      e: "Redondance = inconvénient de la diapo 30 (ex : détection d'erreur à plusieurs couches). Attention au sens : c'est la couche n−1 qui rend service à la couche n, pas n+1 vers n." },
+    { s: "couches", d: 31, annale: "Boutenbout1", q: "Dans le modèle de couche protocolaire Internet, quelles sont les couches fonctionnant de bout-en-bout ?",
+      r: ["les couches 4 et 5", "les couches 3, 4 et 5", "la couche 4 uniquement", "toutes les couches"],
+      e: "Transport (4) et Application (5) n'existent que sur les terminaux. La couche 3 (IP) est traitée par chaque routeur : proche-en-proche." },
+    { s: "couches", d: 31, annale: "Boutenbout2", q: "Que signifie « de bout-en-bout » pour un protocole ?",
+      r: ["il est implémenté seulement sur les terminaux", "il permet d'établir une connexion entre les terminaux", "il assure un transfert de données fiable", "il assure un transfert bidirectionnel (dans les deux sens) entre les terminaux"],
+      e: "Bout-en-bout = il n'existe qu'aux deux bouts (les terminaux) ; les routeurs ne le traitent pas. Ça ne dit rien sur la connexion ou la fiabilité : UDP est de bout-en-bout, mais sans connexion ni fiabilité." },
+    { s: "couches", d: 31, annale: "BBPP", q: "HTTP est un protocole de (1), TCP de (2), et IP de (3)",
+      r: ["(1) bout en bout, (2) bout en bout, (3) proche en proche", "(1) proche en proche, (2) bout en bout, (3) proche en proche", "(1) proche en proche, (2) bout en bout, (3) bout en bout", "(1) bout en bout, (2) proche en proche, (3) proche en proche"],
+      e: "HTTP = couche 5 et TCP = couche 4 → bout-en-bout. IP = couche 3 → proche-en-proche (chaque routeur lit l'en-tête IP)." }
+
   ]
 });

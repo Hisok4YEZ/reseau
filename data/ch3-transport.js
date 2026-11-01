@@ -81,6 +81,13 @@ COURS.chapitres.push({
 <div class="exemple"><b>Exemple du CM</b> : C est un serveur Web (port 80). Le client A et le client B ouvrent chacun une connexion HTTP → sockets séparées. B ouvre même <b>deux</b> connexions : elles se distinguent par le <b>port source</b> (9157 et 5775), car l'IP source (B), l'IP dst (C) et le port dst (80) sont identiques.</div>
 <div class="retenir"><b>UDP = 2 infos (dst)</b> → une socket partagée par tous les clients. <b>TCP = 4 infos (src + dst)</b> → une socket par connexion.</div>
 
+<div class="annale"><b>📝 Tombé en annale — compter les sockets d'un serveur</b>
+<ul>
+  <li><b>UDP</b> (ex. serveur DNS) : A envoie une requête, puis A, B et C en envoient chacun une → toutes arrivent sur (IP du serveur, port 53) → <b>1 seule socket</b>.</li>
+  <li><b>TCP</b> (ex. serveur HTTP) : A a déjà une connexion ; A ouvre une <b>nouvelle</b> connexion et B en ouvre une → <b>2 sockets en plus</b> (un quadruplet différent par connexion).</li>
+  <li>Les paquets UDP arrivant sur une machine vont dans des sockets différentes <b>selon leur port destination</b> (DNS sur 53, NTP sur 123…).</li>
+</ul></div>
+
 <h4>Choix des numéros de port [d53]</h4>
 <ul>
   <li>Le <b>serveur</b> écoute sur un (ou plusieurs) port(s) <b>connu(s)</b>, fixé(s) par convention.</li>
@@ -163,7 +170,13 @@ somme         1011101110111100
 complément à 1 (on inverse chaque bit)
 checksum      0100010001000011</pre>
 <div class="retenir"><b>Complément à 1</b> = inverser tous les bits (0↔1). Astuce : à la réception, si on additionne tous les mots <b>+ le checksum</b> (avec rebouclage), on doit obtenir <code>1111111111111111</code>. Un seul 0 → erreur.</div>
-<div class="piege"><b>« Absolument certain ? »</b> Non : si deux erreurs se compensent (ex. un bit passe de 0 à 1 dans un mot et un autre de 1 à 0 au même rang dans un autre mot), la somme ne change pas et l'erreur passe inaperçue.</div>`
+<div class="piege"><b>« Absolument certain ? »</b> Non : si deux erreurs se compensent (ex. un bit passe de 0 à 1 dans un mot et un autre de 1 à 0 au même rang dans un autre mot), la somme ne change pas et l'erreur passe inaperçue.</div>
+<div class="annale"><b>📝 Tombé en annale</b>
+<ul>
+  <li>UDP = multiplexage + détection d'erreur, <b>bien que la détection d'erreur ne soit pas obligatoire</b>. Détecter ≠ corriger.</li>
+  <li>Une appli sur UDP peut-elle avoir un transfert fiable ? <b>Oui</b>, si elle l'implémente elle-même <b>dans la couche Application</b> (ACK, n° de séquence, timer…, cf. diapo 78).</li>
+  <li>3 calculs de checksum différents sont tombés : entraîne-toi avec les questions de cette section.</li>
+</ul></div>`
     },
 
     {
@@ -648,6 +661,40 @@ Détection d'une congestion → <b>réduction de la taille de la fenêtre d'anti
       e: "Diapo 91 : requête DNS : segment UDP ; requête HTTP : segment TCP." },
     { s: "tcp", d: 91, q: "Dans l'exemple 3, que se passe-t-il juste avant l'envoi de la requête HTTP ?",
       r: ["Une phase de négociation TCP", "Une requête DHCP", "Une annonce BGP", "Un calcul de Dijkstra par le client"],
-      e: "TCP est orienté connexion : phase de négociation, puis requête HTTP dans un segment TCP." }
+      e: "TCP est orienté connexion : phase de négociation, puis requête HTTP dans un segment TCP." },
+    /* =====================================================================
+       ANNALES — questions des vrais QCM (corrigés officiels)
+       ===================================================================== */
+    /* --- multiplexage --- */
+    { s: "multiplexage", d: 50, annale: "Multiplexage1", q: "Dans le multiplexage de la couche Transport sans connexion (par exemple UDP), le numéro de port source est utile",
+      r: ["pour le trajet retour si des paquets doivent être envoyés de la machine destination vers la machine source", "pour sélectionner la bonne socket sur la machine destination", "pour l'acquittement des données en couche Transport", "pour réguler le débit d'émission"],
+      e: "En UDP, la socket du destinataire est choisie avec le port DESTINATION uniquement. Le port source sert seulement à savoir où répondre (diapo 50). UDP ne fait ni acquittement ni régulation de débit." },
+    { s: "multiplexage", d: 49, annale: "Socket3", q: "Les paquets UDP destinés à un même nœud",
+      r: ["sont envoyés vers des sockets différentes selon leur numéro de port destination", "sont toujours envoyés vers la même socket", "sont envoyés vers des sockets différentes selon leurs numéros de port source et destination", "ne peuvent pas être acheminés vers des sockets car seuls les paquets TCP peuvent l'être"],
+      e: "Une machine peut avoir plusieurs sockets UDP (DNS sur 53, NTP sur 123…). Socket UDP = (IP dst, port dst) → c'est le port destination qui choisit. Le port source ne compte qu'en TCP (quadruplet)." },
+    { s: "multiplexage", d: 50, annale: "SocketDNS", q: "On suppose qu'à t0, un nœud A vient d'envoyer une requête à un serveur DNS en utilisant UDP. Juste après, à t1, le nœud A et deux autres nœuds (B et C) envoient chacun 1 requête à ce même serveur DNS. Combien de sockets seront ouvertes sur le serveur dues aux requêtes initiées à t0 et t1 ? On suppose qu'initialement (avant t0) aucune socket n'est ouverte sur le serveur.",
+      r: ["1", "4", "2", "3"],
+      e: "En UDP, la socket du serveur DNS est identifiée seulement par (IP du serveur, port 53). Toutes les requêtes — de A, B et C, à t0 comme à t1 — arrivent dans cette même socket : 1 seule (comme l'exemple de la diapo 50)." },
+    { s: "multiplexage", d: 52, annale: "Socket4", q: "On suppose qu'à t0, un nœud A vient d'envoyer une requête à un serveur HTTP (en TCP donc). Juste après, à t1, le nœud A ouvre une nouvelle connexion TCP et y envoie une nouvelle requête HTTP à ce serveur tandis que le nœud B envoie aussi 1 requête HTTP à ce même serveur. Combien de sockets (en plus) seront ouvertes sur le serveur dues aux requêtes initiées à t1 ?",
+      r: ["2", "0", "1", "3"],
+      e: "En TCP, une socket par connexion (quadruplet). À t1 : la nouvelle connexion de A (nouveau port source) → 1 socket, la connexion de B → 1 socket. Donc 2 en plus. Celle de t0 ne compte pas (« en plus »)." },
+
+    /* --- udp --- */
+    { s: "udp", d: 55, annale: "UDP2", q: "Le protocole de transport UDP assure principalement les services (fonctions) suivants",
+      r: ["le multiplexage et la détection d'erreur, bien que la détection d'erreur ne soit pas un service obligatoire", "la détection d'erreur et le contrôle de flux", "le multiplexage et la correction d'erreur", "le multiplexage et la détection d'erreur car ce sont deux services obligatoires pour UDP"],
+      e: "Diapo 55 : service minimum = multiplexage + détection d'erreurs « pas obligatoire, fixé à 0 si pas utilisé ». Détecter ≠ corriger : UDP repère l'erreur mais ne répare rien. Pas de contrôle de flux (TCP seulement)." },
+    { s: "udp", d: 55, annale: "UDP1", q: "Une application peut-elle bénéficier d'un service de transfert de données fiable si elle repose sur UDP ?",
+      r: ["Oui, en implémentant le service de transfert de données fiable dans la couche Application", "Oui, si les protocoles de couches basses ne produisent pas d'erreur de transmission", "Oui, si les tampons (« buffers ») sont de tailles suffisantes", "Non, ce n'est pas possible"],
+      e: "UDP laisse le contrôle à l'appli (diapo 55). L'appli peut ajouter elle-même les pièces maîtresses du transfert fiable (diapo 78 : checksum, ACK, n° de séquence, timer). C'est ce que fait QUIC, par exemple. On ne peut jamais compter sur un réseau sans erreur." },
+    { s: "udp", d: 58, annale: "CS1", q: "On considère un segment UDP qui peut être décomposé en deux mots de 16 bits tels que mot1 = 0011001110100110 et mot2 = 1010001001011100. La somme de contrôle de ce segment UDP correspond à",
+      r: ["0010100111111101", "1101011000000010", "1011001101100011", "1111000011110000"],
+      e: "mot1 + mot2 = 1101011000000010 (pas de retenue qui dépasse à gauche). Checksum = complément à 1 → on inverse tous les bits : 0010100111111101. Piège : 1101011000000010 est la somme, pas la checksum." },
+    { s: "udp", d: 58, annale: "CS2", q: "On considère un segment UDP qui peut être décomposé en deux mots de 16 bits tels que mot1 = 0001001110100110 et mot2 = 1010001001011100. La somme de contrôle de ce segment UDP correspond à",
+      r: ["0100100111111101", "0010100111111101", "1011001101100011", "1111000011110000"],
+      e: "mot1 + mot2 = 1011011000000010 (pas de retenue qui dépasse). On inverse tous les bits : 0100100111111101. Piège : 0010100111111101 est la réponse de l'autre annale (mot1 différent d'un seul bit !)." },
+    { s: "udp", d: 58, annale: "CS3", q: "On considère un segment UDP qui peut être décomposé en deux mots de 16 bits tels que mot1 = 1101110001111111 et mot2 = 1001101110110001. La somme de contrôle de ce segment UDP correspond à",
+      r: ["1000011111001110", "1000011111001100", "1011001101100010", "1000000011110000"],
+      e: "Somme = 10111100000110000 : 17 bits, donc une retenue dépasse. On la reboucle : 0111100000110000 + 1 = 0111100000110001. Puis complément à 1 (on inverse tout) : 1000011111001110." }
+
   ]
 });
